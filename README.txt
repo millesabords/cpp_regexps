@@ -8,7 +8,9 @@ My advice? pattern matching with boost/C++11 regexp api is not the tool.
 - Use C++11 regexp api only if you don't have the choice.
 
 Requirements:
-make sure to have ffmpeg and ffprobe installed on your system
+- make sure to have ffmpeg and ffprobe installed on your system
+- For windows users under linux: you need 'i686-w64-mingw32-g++' and 'wine' to cross-compile and test under linux
+- For windows users under windows (make sense?): don't know. Not tested under a real windows environment yet. TODO
 
 How to use:
 $ make
