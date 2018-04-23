@@ -135,8 +135,10 @@ int main(int argc, char* argv[]){
 		die("unknown exception while reading");
 	}
 
+	/*
 	std::cout << "(debug) number of characters read: " << vhead.gcount() << std::endl;
 	std::cout << "(debug) str size: " << str.size() << std::endl;
+*/
 
 	vhead.close();
 
@@ -172,9 +174,9 @@ int main(int argc, char* argv[]){
 	*/
 
 	// -> 2
-	const std::string replacement = "";
 	std::string result;
 	result = std::regex_replace(str, pattern, "$1");
+	//const std::string replacement = "";
 	//std::regex_replace(back_inserter(result), str.begin(), str.end(), pattern, replacement, std::regex_constants::format_sed);
 
 	//debug
@@ -204,42 +206,49 @@ int main(int argc, char* argv[]){
 			});
 
 	std::string temp, nals_buf;
-	int tupeuxpascheck = 0;
 
-	//nals file is far too heavy to be read line by line(process sooooo slow...)
-	//no other choice than to bufferize
+	//all of the following is made to prepare reading nals file
+	//file is too big to be read with simple 'getline' function (in case you wondered)
 	std::filebuf* pbuf = nals.rdbuf();
 	std::size_t nalsSize = pbuf->pubseekoff (0,nals.end,nals.in);
 	pbuf->pubseekpos (0,nals.in);
 	char* nalsBuf=new char[nalsSize];
 	pbuf->sgetn (nalsBuf,nalsSize);
-
 	std::istringstream nals_iss(nalsBuf);
 	char* line_buf=new char[NALS_FILE_COLUMNS_LENGTH_MAX];
+	std::string fub = "";
+	bool firstPacket = true;
+	std::string result2;
+	std::regex packetregex1 { "^\\[PACKET\\]" , std::regex::extended };
+	std::regex packetregex2 { " ([0-9a-fA-F]{4})" , std::regex::extended };
+   char *token = nullptr;
+	//let's read it
 	while(nals_iss.getline(line_buf, NALS_FILE_COLUMNS_LENGTH_MAX)){
+		if(nals_iss.gcount() < NALS_FILE_COLUMNS_LENGTH_MAX){//header packet
+			if(std::regex_match(line_buf, packetregex1) && !firstPacket){//header packet "PACKET"
+				//std::cout << line_buf << std::endl;
 
-		//if line is not a packet header data: it is binary data
-		//(rather than to use regex "^0.......: (.{40})" that is much too slow to process in C++ 
-		if(nals_iss.gcount() < NALS_FILE_COLUMNS_LENGTH_MAX)
-			std::cout << nals_iss.gcount() << std::endl;
 
-		//else it is packet header data
-	/*	if(std::regex_match(, nalsGoodInfo)){
+
+				/*this solution takes much too much time
+				 * result2 = std::regex_replace(fub, packetregex2, "");
+				 std::cout << result2 << std::endl;
+				 */
+				//+ a lot of stuff to do here
+			}
 		}
-		*/
+		else{//not header packet -> binary data
+			firstPacket = false;
+			token = std::strtok(line_buf, " ");
+			int ii = 0;
+			while (ii < 8 && token != NULL) {
+				token = std::strtok(NULL, " ");
+				fub += token;
+				++ii;
+			}
+		}
 	}
 
 
-/*
-	while(){
-		if(std::regex_match(temp, nalsGoodInfo)){
-			nals_buf += temp;
-
-tupeuxpascheck++;
-			//TODO "print dumper" perl
-		}
-	}
-		std::cout << tupeuxpascheck << std::endl;
-*/
 	return 0;
 }

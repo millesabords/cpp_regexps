@@ -27,7 +27,10 @@ Nevertheless, there are some inconveniences when working with binary files:
 
 Furthermore, if you want to check binary output file after C++ treatment, you can make use of 'hexdump -C' on it:
 
+A possible improvement would be to parallelize some operations that are done on independant buffers
 
+regexp "^0.......: (.{40})" was replaced to another system (counting line column numbers)
+because it was much too slow when done in C++ 
 
 
 Following is my debug code buffer:
