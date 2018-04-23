@@ -222,26 +222,29 @@ int main(int argc, char* argv[]){
 	std::regex packetregex1 { "^\\[PACKET\\]" , std::regex::extended };
 	std::regex packetregex2 { " ([0-9a-fA-F]{4})" , std::regex::extended };
    char *token = nullptr;
+	int ii, local_size;
 	//let's read it
 	while(nals_iss.getline(line_buf, NALS_FILE_COLUMNS_LENGTH_MAX)){
 		if(nals_iss.gcount() < NALS_FILE_COLUMNS_LENGTH_MAX){//header packet
-			if(std::regex_match(line_buf, packetregex1) && !firstPacket){//header packet "PACKET"
-				//std::cout << line_buf << std::endl;
-
-
-
-				/*this solution takes much too much time
-				 * result2 = std::regex_replace(fub, packetregex2, "");
-				 std::cout << result2 << std::endl;
-				 */
-				//+ a lot of stuff to do here
+			//if(!std::regex_match(line_buf, packetregex1) && !firstPacket){//header packet "PACKET"
+			std::cout << "line_buf: " << line_buf << "\n";
+			if(nals_iss.gcount() > 1 &&
+					!strstr(line_buf, "PACKET") &&
+					!firstPacket){//header packet "PACKET"
+				while(1){
+					//local_size = strtol(token, nullptr, 16);
+					std::istringstream(fub.substr(0,8)) >> std::hex >> local_size;
+					std::cout << "line_buf: " << line_buf << "local_size: " << local_size << "\n";
+					WAX;
+					exit(23);
+				}
 			}
 		}
 		else{//not header packet -> binary data
 			firstPacket = false;
-			token = std::strtok(line_buf, " ");
-			int ii = 0;
-			while (ii < 8 && token != NULL) {
+			ii = 0;
+			token = std::strtok(line_buf, " ");//forget first token
+			while (ii < 8 && token != NULL) {//forget last token (number 9)
 				token = std::strtok(NULL, " ");
 				fub += token;
 				++ii;
