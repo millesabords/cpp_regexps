@@ -6,7 +6,7 @@ all: compileLinux testLinux
 compileLinux:
 	g++ -Wall -Wfatal-errors -g -std=c++1y -std=gnu++17 Fixer.cpp -o linuxFixer
 
-testLinux: compileLinux
+testLinux:
 	./linuxFixer good.mp4 broken.mp4 output
 
 

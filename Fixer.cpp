@@ -18,6 +18,9 @@
 	#define FFPROBE "ffprobe"
 #endif
 
+#define NALS_FILE_COLUMNS_LENGTH_MAX	68
+
+
 #define WAX std::cout << "WAX" << std::endl
 #define XAW(n) std::cout << "WAX " << n << std::endl
 
@@ -118,11 +121,6 @@ int main(int argc, char* argv[]){
 		/*
 			1 vhead.read(header, headerSize);
 			2 vhead >> header;
-			3 std::filebuf* pbuf = vhead.rdbuf();
-			std::size_t size = pbuf->pubseekoff (0,vhead.end,vhead.in);
-			pbuf->pubseekpos (0,vhead.in);
-			char* buffer=new char[size];
-			pbuf->sgetn (buffer,size);
 			*/
 		str = std::string(headerSize, '\0');
 		vhead.seekg(0);
@@ -205,6 +203,43 @@ int main(int argc, char* argv[]){
 					});
 			});
 
+	std::string temp, nals_buf;
+	int tupeuxpascheck = 0;
 
+	//nals file is far too heavy to be read line by line(process sooooo slow...)
+	//no other choice than to bufferize
+	std::filebuf* pbuf = nals.rdbuf();
+	std::size_t nalsSize = pbuf->pubseekoff (0,nals.end,nals.in);
+	pbuf->pubseekpos (0,nals.in);
+	char* nalsBuf=new char[nalsSize];
+	pbuf->sgetn (nalsBuf,nalsSize);
+
+	std::istringstream nals_iss(nalsBuf);
+	char* line_buf=new char[NALS_FILE_COLUMNS_LENGTH_MAX];
+	while(nals_iss.getline(line_buf, NALS_FILE_COLUMNS_LENGTH_MAX)){
+
+		//if line is not a packet header data: it is binary data
+		//(rather than to use regex "^0.......: (.{40})" that is much too slow to process in C++ 
+		if(nals_iss.gcount() < NALS_FILE_COLUMNS_LENGTH_MAX)
+			std::cout << nals_iss.gcount() << std::endl;
+
+		//else it is packet header data
+	/*	if(std::regex_match(, nalsGoodInfo)){
+		}
+		*/
+	}
+
+
+/*
+	while(){
+		if(std::regex_match(temp, nalsGoodInfo)){
+			nals_buf += temp;
+
+tupeuxpascheck++;
+			//TODO "print dumper" perl
+		}
+	}
+		std::cout << tupeuxpascheck << std::endl;
+*/
 	return 0;
 }
