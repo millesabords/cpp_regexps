@@ -2,8 +2,10 @@
 #include <string>
 #include <iostream>
 #include <fstream>
+#include <map>
 //#include <cstdlib>
 
+//'iops' in comments means "in original perl script"
 //std::string binary = std::bitset<8>(n).to_string();
 
 #if defined(WIN32) || defined(_WIN32) || defined(__WIN32) && !defined(__CYGWIN__)
@@ -69,6 +71,65 @@ void buildIntermediateFile(const std::string& fileName, const std::string& cmdLi
 	}
 }
 
+/*
+//Nals map is a list of maps
+//underlying maps can be either string to int maps
+//or string to another underlying map (checkout 'printbytes' keyword in output--nals-stats.txt to understand)
+//script languages such as perl may have totally different types inside a same array
+//we are emulating the same thing here, by defining this ambiguous type
+//*/
+class stringOrInt{
+	public:
+		enum disambig{
+			E_INTT,
+			E_MAPP
+		};
+		typedef std::map<const std::string, int> t_hashsMap;
+
+	private:
+		int intVal;
+		t_hashsMap mapVal;
+		disambig dd;
+
+	public:
+		stringOrInt(){
+			intVal = 0;
+			dd = E_INTT;
+		}
+		stringOrInt(int value){
+			intVal = value;
+			dd = E_INTT;
+		}
+		stringOrInt(t_hashsMap& value){
+			mapVal = value;
+			dd = E_MAPP;
+		}
+		int get_intVal(){
+			if(dd == E_INTT)
+				return intVal;
+			else{
+				die("tried to access stringOrInt value as int, whereas it is a map");
+				return 0;
+			}
+		}
+		t_hashsMap& get_mapVal(){
+			if(dd != E_MAPP)
+				die("tried to access stringOrInt value as map, whereas it is an int");
+			return mapVal;
+		}
+		disambig get_stringOrIntDisambig() const{
+			return dd;
+		}
+		void set_intVal(int value){
+			dd = E_INTT;
+			intVal = value;
+		}
+		void set_mapVal(t_hashsMap& value){
+			dd = E_MAPP;
+			mapVal = value;
+		}
+};
+
 int main(int argc, char* argv[]){
 	if(argc != 4){
 		std::cout << "Usage: " << argv[0] << " <good_file.mp4> <bad_file.mp4> <output_prefix>" << std::endl;
@@ -114,18 +175,16 @@ int main(int argc, char* argv[]){
 	open_output_file(aout, out_audio);
 
 	unsigned int headerSize = 0x100;
-	char header[headerSize];
-	std::string str;
+	std::string header;
 	try{
-		//several failed attempts to put binary data into string:
 		/*
 			1 vhead.read(header, headerSize);
 			2 vhead >> header;
 			*/
-		str = std::string(headerSize, '\0');
+		header = std::string(headerSize, '\0');
 		vhead.seekg(0);
-		vhead.read(&str[0], headerSize);
-		if(str.size() != headerSize)
+		vhead.read(&header[0], headerSize);
+		if(header.size() != headerSize)
 			die("could not read header from binary file.");
 	}
 	catch (const std::ifstream::failure& e) {
@@ -137,7 +196,7 @@ int main(int argc, char* argv[]){
 
 	/*
 	std::cout << "(debug) number of characters read: " << vhead.gcount() << std::endl;
-	std::cout << "(debug) str size: " << str.size() << std::endl;
+	std::cout << "(debug) header size: " << header.size() << std::endl;
 */
 
 	vhead.close();
@@ -156,7 +215,7 @@ int main(int argc, char* argv[]){
 
 	/* -> 1
 		std::smatch mr;
-		bool search_res = std::regex_search(str, mr, pattern);
+		bool search_res = std::regex_search(header, mr, pattern);
 		std::cout << "(debug) regex_search result: " << std::boolalpha << search_res << std::endl;
 		if (mr.ready()) {
 		std::cout << mr[0] << " found!\n";
@@ -175,33 +234,34 @@ int main(int argc, char* argv[]){
 
 	// -> 2
 	std::string result;
-	result = std::regex_replace(str, pattern, "$1");
+	result = std::regex_replace(header, pattern, "$1");
 	//const std::string replacement = "";
-	//std::regex_replace(back_inserter(result), str.begin(), str.end(), pattern, replacement, std::regex_constants::format_sed);
+	//std::regex_replace(back_inserter(result), header.begin(), header.end(), pattern, replacement, std::regex_constants::format_sed);
 
 	//debug
+	/*
 	std::ofstream mydebugresult("mydebugresult", std::ios::out | std::ios::binary);
 	mydebugresult << result;
 	mydebugresult.close();
 	std::ofstream mydebug("mydebug", std::ios::out | std::ios::binary);
-	mydebug << str;
+	mydebug << header;
 	mydebug.close();
+*/
 
-	//todo: check why vhead is reopened in bin mode after its already read in original script
+	//todo: check why vhead is reopened in bin mode after its already read iops
 
 
 	//get nals
 	std::string buf;
-	int size;
-	typedef std::map<const std::string, int> t_nals_map;
+	typedef std::map<const std::string, stringOrInt> t_nals_map;
 	std::array<t_nals_map, 32> nalsMaps;//32 == 0b11111 + 0b1
 	int i = 0;
 	//for(nals_map& nm: nals){
 	std::for_each(nalsMaps.begin(), nalsMaps.end(), [&i](t_nals_map& nm){
 			nm = t_nals_map({
-					{"min", 0xFFFFFF}, 
-					{"max", 0x0},
-					{"id", i++}
+					{"min", stringOrInt(0xFFFFFF)}, 
+					{"max", stringOrInt(0x0)},
+					{"id", stringOrInt(i++)}
 					});
 			});
 
@@ -219,39 +279,82 @@ int main(int argc, char* argv[]){
 	std::string fub = "";
 	std::string bytes = "";
 	bool firstPacket = true;
-	std::string result2;
 	std::regex packetregex1 { "^\\[PACKET\\]" , std::regex::extended };
 	std::regex packetregex2 { " ([0-9a-fA-F]{4})" , std::regex::extended };
    char *token = nullptr;
 	int ii, local_size, type;
-	uint32_t n;
 	//let's read it
 	while(nals_iss.getline(line_buf, NALS_FILE_COLUMNS_LENGTH_MAX)){
+		XAW("0");
 		if(nals_iss.gcount() < NALS_FILE_COLUMNS_LENGTH_MAX){//header packet
 			if(nals_iss.gcount() > 1 &&
 					!strstr(line_buf, "PACKET") &&
 					!firstPacket){//header packet "PACKET"
+			XAW("1");
 				while(1){
 					std::istringstream(fub.substr(0,8)) >> std::hex >> local_size;
 					std::cout << "NAL: " << local_size << "\n";
-					if((int)fub.length() >= local_size + 8){
+					if((int)fub.length() >= (local_size*2) + 8){
+						std::cout << "XAW fub length: " << fub.length() << "\n";
 						std::istringstream(fub.substr(8,2)) >> std::hex >> type;
 						type &= 0b11111;
 						std::istringstream(fub.substr(8,type==5?6:4)) >> std::hex >> bytes;
+						std::cout << "type= " << type << "\n";
 						std::cout << "bytes= " << bytes << "\n";
-						n = bytes[0] << 24
-							| bytes[1] << 16
-							| bytes[2] <<  8
-							| bytes[3] <<  0;	
-						std::cout << "n= " << n << "\n";
-					}
+						short unsigned int cbb[3];
 
-					WAX;
-					exit(23);
+						//packing by hand (turning back ascii hex value as binary hex value)
+						//I wish there was something like Perl pack("H*", ...) in C++
+						//check out and test libpack if really necessary
+						for ( unsigned int j = 0; j < bytes.length() / 2 ; j++) {
+							sscanf( (bytes.substr(j*2,2)).c_str(), "%hx", &cbb[j]);
+						}
+
+
+						std::cout << "cbb=" << cbb << "wax\n";
+
+if(type != 5){
+	//TODO
+						std::cout << "debugging pack for 4 digits hex number when type != 5 TODO: cbb=" << cbb << "\n";
+exit(534);
+}
+
+/*
+
+						t_nals_map& localNalsMapRef = nalsMaps[type];//localNalsMapRef is '$n' iops
+						if(localNalsMapRef["min"].get_intVal() > local_size)
+							localNalsMapRef["min"].set_intVal(local_size);
+						if(localNalsMapRef["max"].get_intVal() < local_size)
+							localNalsMapRef["max"].set_intVal(local_size);
+						*TODO put {$bytes} and {$printbytes} hash maps into localNalsMapRef
+						 *
+						 * {$bytes} is needed to build audio restitution file later.
+						 * {$printbytes} doesn't seem to be used iops
+						 *
+						 * {$bytes} is a list of dereferences, that is still unclear to me
+						 *	t_hashsMap tmp_map;
+						 * for i in ? do {
+						 *	std::make_pair<std::string, int> tmp_pair(something with $bytes);
+						 *	tmp_map[tmp_pair] = 1;
+						 * }
+						 * localNalsMapRef["bytes"].set_mapVal(tmp_map));
+						 * localNalsMapRef["printbytes"].set_mapVal(samesamebutuseless)
+						 */
+							
+						fub = fub.substr(8+(local_size*2), 0);
+					}
+					else{
+						break;
+					}
+						
+						std::cout << "Remain " << fub.length() << ": " << fub.substr(0, 32) << "\n";
+						line_buf = nullptr;//todo check if deleting this doesn't crash anything
 				}
+			XAW("2");
 			}
 		}
 		else{//not header packet -> binary data
+			XAW("3");
 			firstPacket = false;
 			ii = 0;
 			token = std::strtok(line_buf, " ");//forget first token
@@ -260,26 +363,12 @@ int main(int argc, char* argv[]){
 				fub += token;
 				++ii;
 			}
-			//todo, try efficiency of using this syntax:
-			/*
-std::string subject("This is a test");
-try {
-  std::regex re("\\w+");
-  std::sregex_iterator next(subject.begin(), subject.end(), re);
-  std::sregex_iterator end;
-  while (next != end) {
-    std::smatch match = *next;
-    std::cout << match.str() << "\n";
-    next++;
-  } 
-} catch (std::regex_error& e) {
-  // Syntax error in the regular expression
-}
-*/
-
+			XAW("4");
 		}
 	}
 
+	//todo (optionnal): dumper functionnality: to pretty-print nals stats file here.
 
+	vout << header;
 	return 0;
 }

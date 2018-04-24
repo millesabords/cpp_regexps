@@ -1,12 +1,13 @@
 default_target: all
 .PHONY : default_target
-LIBPACK=libpack/libpack.o
-LIBPACKCCFLAGS=-Iinclude -Wall -std=c99 -g
 
 all: compileLinux testLinux
 
-compileLinux: $(LIBPACK)
-	g++ -Wall -Wfatal-errors -g -std=c++1y -std=gnu++17 $(LIBPACK) Fixer.cpp -o linuxFixer
+compileLinux:
+	g++ -Wall -Wfatal-errors -g -std=c++1y -std=gnu++17 Fixer.cpp -o linuxFixer
+
+supercompile:
+	g++ -Wall -Wfatal-errors -std=gnu++17 -O4 Fixer.cpp -o linuxFixer
 
 testLinux:
 	./linuxFixer good.mp4 broken.mp4 output
@@ -23,7 +24,9 @@ testWin:
 	wine winFixer.exe good.mp4 broken.mp4 output
 
 
-#todo: $(CC) must be addapted for mingw when compile for windows, and compileWin rule must be adapted to include compiled dll
+#if you need pack() functionnality in C++, compile and integrate (adapt the compilation directives accordingly) the following library:
+LIBPACK=libpack/libpack.o
+LIBPACKCCFLAGS=-Iinclude -Wall -std=c99 -g
 libpack/%.o: libpack/%.c
 	$(CC) -o $@ $(LIBPACKCCFLAGS) -c $<
 $(LIBPACK): libpack/parse.o libpack/pack.o libpack/unpack.o libpack/stream.o libpack/file.o libpack/string.o

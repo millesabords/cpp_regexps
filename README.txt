@@ -52,3 +52,23 @@ Following is my debug code buffer:
 
 	size_t trailing_zeros = result.find_last_not_of('\0') + 1;//note that C++ string api interprets binary zero as '\0'
 	result.erase(trailing_zeros, result.size()-1);
+
+
+
+
+			//todo, try efficiency of using this syntax:
+			/*
+std::string subject("This is a test");
+try {
+  std::regex re("\\w+");
+  std::sregex_iterator next(subject.begin(), subject.end(), re);
+  std::sregex_iterator end;
+  while (next != end) {
+    std::smatch match = *next;
+    std::cout << match.str() << "\n";
+    next++;
+  } 
+} catch (std::regex_error& e) {
+  // Syntax error in the regular expression
+}
+*/
