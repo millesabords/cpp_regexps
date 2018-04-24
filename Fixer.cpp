@@ -285,17 +285,17 @@ int main(int argc, char* argv[]){
 	int ii, local_size, type;
 	//let's read it
 	while(nals_iss.getline(line_buf, NALS_FILE_COLUMNS_LENGTH_MAX)){
-		XAW("0");
+
 		if(nals_iss.gcount() < NALS_FILE_COLUMNS_LENGTH_MAX){//header packet
 			if(nals_iss.gcount() > 1 &&
 					!strstr(line_buf, "PACKET") &&
 					!firstPacket){//header packet "PACKET"
-			XAW("1");
+
 				while(1){
 					std::istringstream(fub.substr(0,8)) >> std::hex >> local_size;
 					std::cout << "NAL: " << local_size << "\n";
 					if((int)fub.length() >= (local_size*2) + 8){
-						std::cout << "XAW fub length: " << fub.length() << "\n";
+
 						std::istringstream(fub.substr(8,2)) >> std::hex >> type;
 						type &= 0b11111;
 						std::istringstream(fub.substr(8,type==5?6:4)) >> std::hex >> bytes;
@@ -313,11 +313,12 @@ int main(int argc, char* argv[]){
 
 						std::cout << "cbb=" << cbb << "wax\n";
 
+/*
 if(type != 5){
 	//TODO
 						std::cout << "debugging pack for 4 digits hex number when type != 5 TODO: cbb=" << cbb << "\n";
-exit(534);
 }
+*/
 
 /*
 
@@ -348,13 +349,13 @@ exit(534);
 					}
 						
 						std::cout << "Remain " << fub.length() << ": " << fub.substr(0, 32) << "\n";
-						line_buf = nullptr;//todo check if deleting this doesn't crash anything
+						fub = "";//todo check if deleting this doesn't crash anything
 				}
-			XAW("2");
+
 			}
 		}
 		else{//not header packet -> binary data
-			XAW("3");
+
 			firstPacket = false;
 			ii = 0;
 			token = std::strtok(line_buf, " ");//forget first token
@@ -363,12 +364,43 @@ exit(534);
 				fub += token;
 				++ii;
 			}
-			XAW("4");
+
 		}
 	}
 
 	//todo (optionnal): dumper functionnality: to pretty-print nals stats file here.
-
 	vout << header;
+
+	int was_key = 0;
+	std::string shit = "";
+	int blocksize = 10000000;
+	
+//	unsigned int file_bfile = 0x100;
+	std::string fileContent;
+	try{
+		WAX;XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXcontinue
+	pbuf = bfile.rdbuf();
+	std::size_t fileContentSize = pbuf->pubseekoff (0,bfile.end,bfile.in);
+	pbuf->pubseekpos (0,bfile.in);
+	char* fileContentBuf=new char[fileContentSize];
+	pbuf->sgetn (fileContentBuf,fileContentSize);
+	std::istringstream fileContent_iss(fileContentBuf);
+		/*
+			1 vhead.read(fileContent, fileContentSize);
+			2 vhead >> fileContent;
+			*/
+		fileContent = std::string(fileContentSize, '\0');
+		vhead.seekg(0);
+		vhead.read(&fileContent[0], fileContentSize);
+		if(fileContent.size() != fileContentSize)
+			die("could not read fileContent from binary file.");
+	}
+	catch (const std::ifstream::failure& e) {
+		die(e.what());
+	}
+	catch (...){
+		die("unknown exception while reading");
+	}
+
 	return 0;
 }
