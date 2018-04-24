@@ -3,6 +3,7 @@
 #include <iostream>
 #include <fstream>
 #include <map>
+#include <ctime>
 //#include <cstdlib>
 
 //'iops' in comments means "in original perl script"
@@ -268,7 +269,8 @@ int main(int argc, char* argv[]){
 	std::string temp, nals_buf;
 
 	//all of the following is made to prepare reading nals file
-	//file is too big to be read with simple 'getline' function (in case you wondered)
+	//file is too big to be read with direct 'ifstream::getline' (too many syscalls I guess)
+	//getlines will have to be made on a buffered stream
 	std::filebuf* pbuf = nals.rdbuf();
 	std::size_t nalsSize = pbuf->pubseekoff (0,nals.end,nals.in);
 	pbuf->pubseekpos (0,nals.in);
@@ -315,12 +317,9 @@ int main(int argc, char* argv[]){
 
 /*
 if(type != 5){
-	//TODO
 						std::cout << "debugging pack for 4 digits hex number when type != 5 TODO: cbb=" << cbb << "\n";
+						exit(45);
 }
-*/
-
-/*
 
 						t_nals_map& localNalsMapRef = nalsMaps[type];//localNalsMapRef is '$n' iops
 						if(localNalsMapRef["min"].get_intVal() > local_size)
@@ -376,24 +375,28 @@ if(type != 5){
 	int blocksize = 10000000;
 	
 //	unsigned int file_bfile = 0x100;
-	std::string fileContent;
 	try{
-		WAX;XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXcontinue
-	pbuf = bfile.rdbuf();
-	std::size_t fileContentSize = pbuf->pubseekoff (0,bfile.end,bfile.in);
-	pbuf->pubseekpos (0,bfile.in);
-	char* fileContentBuf=new char[fileContentSize];
-	pbuf->sgetn (fileContentBuf,fileContentSize);
-	std::istringstream fileContent_iss(fileContentBuf);
-		/*
-			1 vhead.read(fileContent, fileContentSize);
-			2 vhead >> fileContent;
-			*/
-		fileContent = std::string(fileContentSize, '\0');
-		vhead.seekg(0);
-		vhead.read(&fileContent[0], fileContentSize);
-		if(fileContent.size() != fileContentSize)
-			die("could not read fileContent from binary file.");
+		pbuf = bfile.rdbuf();
+		//std::size_t fileContentSize = pbuf->pubseekoff (0,bfile.end,bfile.in);
+		//pbuf->pubseekpos (0,bfile.in);
+		//char* fileContentBuf=new char[fileContentSize];
+		//pbuf->sgetn (fileContentBuf,fileContentSize);
+		char* fileContentBuf=new char[blocksize];
+		std::string fileContent = "";
+		while(1){
+			std::streamsize sizeRead = pbuf->sgetn (fileContentBuf,blocksize);
+			if(sizeRead == 0)
+				break;
+			std::istringstream fileContent_iss(fileContentBuf);
+			fileContent += fileContentBuf;
+			sizeRead = fileContentSize.length() - 10;
+			
+			std::time_t s_time = std::time(nullptr);
+			//std::cout << std::asctime(std::localtime(&s_time));
+		   for(int jj = 0; j < sizeRead;){
+			 	//TODO unpack stuff...
+			}
+		}
 	}
 	catch (const std::ifstream::failure& e) {
 		die(e.what());
