@@ -32,6 +32,14 @@ A possible improvement would be to parallelize some operations that are done on 
 regexp "^0.......: (.{40})" was replaced to another system (counting line column numbers)
 because it was much too slow when done in C++ 
 
+Speaking about Perl and regexps, here is a good reading suggestion:
+https://www.perl.com/pub/2003/06/06/regexps.html/
+https://www.perl.com/pub/2003/07/01/regexps.html/
+
+external libraries used:
+libpack C portable library than emulates "pack" utility from Perl, with MIT license.
+http://www.leonerd.org.uk
+
 
 Following is my debug code buffer:
 	//auto headerPattern {R""s};

@@ -217,24 +217,35 @@ int main(int argc, char* argv[]){
 	std::istringstream nals_iss(nalsBuf);
 	char* line_buf=new char[NALS_FILE_COLUMNS_LENGTH_MAX];
 	std::string fub = "";
+	std::string bytes = "";
 	bool firstPacket = true;
 	std::string result2;
 	std::regex packetregex1 { "^\\[PACKET\\]" , std::regex::extended };
 	std::regex packetregex2 { " ([0-9a-fA-F]{4})" , std::regex::extended };
    char *token = nullptr;
-	int ii, local_size;
+	int ii, local_size, type;
+	uint32_t n;
 	//let's read it
 	while(nals_iss.getline(line_buf, NALS_FILE_COLUMNS_LENGTH_MAX)){
 		if(nals_iss.gcount() < NALS_FILE_COLUMNS_LENGTH_MAX){//header packet
-			//if(!std::regex_match(line_buf, packetregex1) && !firstPacket){//header packet "PACKET"
-			std::cout << "line_buf: " << line_buf << "\n";
 			if(nals_iss.gcount() > 1 &&
 					!strstr(line_buf, "PACKET") &&
 					!firstPacket){//header packet "PACKET"
 				while(1){
-					//local_size = strtol(token, nullptr, 16);
 					std::istringstream(fub.substr(0,8)) >> std::hex >> local_size;
-					std::cout << "line_buf: " << line_buf << "local_size: " << local_size << "\n";
+					std::cout << "NAL: " << local_size << "\n";
+					if((int)fub.length() >= local_size + 8){
+						std::istringstream(fub.substr(8,2)) >> std::hex >> type;
+						type &= 0b11111;
+						std::istringstream(fub.substr(8,type==5?6:4)) >> std::hex >> bytes;
+						std::cout << "bytes= " << bytes << "\n";
+						n = bytes[0] << 24
+							| bytes[1] << 16
+							| bytes[2] <<  8
+							| bytes[3] <<  0;	
+						std::cout << "n= " << n << "\n";
+					}
+
 					WAX;
 					exit(23);
 				}
@@ -249,6 +260,23 @@ int main(int argc, char* argv[]){
 				fub += token;
 				++ii;
 			}
+			//todo, try efficiency of using this syntax:
+			/*
+std::string subject("This is a test");
+try {
+  std::regex re("\\w+");
+  std::sregex_iterator next(subject.begin(), subject.end(), re);
+  std::sregex_iterator end;
+  while (next != end) {
+    std::smatch match = *next;
+    std::cout << match.str() << "\n";
+    next++;
+  } 
+} catch (std::regex_error& e) {
+  // Syntax error in the regular expression
+}
+*/
+
 		}
 	}
 
