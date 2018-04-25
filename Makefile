@@ -4,10 +4,10 @@ default_target: all
 all: compileLinux testLinux
 
 compileLinux:
-	g++ -Wall -Wfatal-errors -g -std=c++1y -std=gnu++17 Fixer.cpp -o linuxFixer
+	g++ -Wall -Wfatal-errors -g -std=c++1y -std=gnu++17 helper.cpp Fixer.cpp -o linuxFixer
 
 supercompile:
-	g++ -Wall -Wfatal-errors -std=gnu++17 -O4 Fixer.cpp -o linuxFixer
+	g++ -Wall -Wfatal-errors -std=gnu++17 -O4 helper.cpp Fixer.cpp -o linuxFixer
 
 testLinux:
 	./linuxFixer good.mp4 broken.mp4 output
@@ -18,7 +18,7 @@ testLinux:
 #...or make use of <boost/filesystem.hpp>?
 
 compileWin: $(LIBPACK)
-	i686-w64-mingw32-g++ -Wall -Wfatal-errors -static-libgcc -static-libstdc++ -o winFixer.exe Fixer.cpp
+	i686-w64-mingw32-g++ -Wall -Wfatal-errors -static-libgcc -static-libstdc++ -o helper.cpp winFixer.exe Fixer.cpp
 
 testWin:
 	wine winFixer.exe good.mp4 broken.mp4 output

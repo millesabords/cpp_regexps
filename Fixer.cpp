@@ -1,135 +1,9 @@
 #include <regex>
 #include <string>
-#include <iostream>
-#include <fstream>
-#include <map>
 #include <ctime>
-//#include <cstdlib>
 
-//'iops' in comments means "in original perl script"
-//std::string binary = std::bitset<8>(n).to_string();
+#include "Fixer.h"
 
-#if defined(WIN32) || defined(_WIN32) || defined(__WIN32) && !defined(__CYGWIN__)
-//windows platforms
-	#define slash "\\"
-	#define FFMPEG "ffmpeg.exe"
-	#define FFPROBE "ffprobe.exe"
-#else
-//linux and others
-	#define slash "/"
-	#define FFMPEG "ffmpeg"
-	#define FFPROBE "ffprobe"
-#endif
-
-#define NALS_FILE_COLUMNS_LENGTH_MAX	68
-
-
-#define WAX std::cout << "WAX" << std::endl
-#define XAW(n) std::cout << "WAX " << n << std::endl
-
-void die(const std::string& fname){
-	std::cerr << fname << ": could not open file, error." << std::endl;
-	exit(42);
-}
-
-void open_input_file(std::ifstream& inputFileStream, const std::string& inputFileName){
-	try{
-		inputFileStream.exceptions ( std::ifstream::eofbit | std::ifstream::failbit | std::ifstream::badbit );
-		//inputFileStream.open(inputFileName, std::ifstream::binary | std::ifstream::in);
-		inputFileStream.open(inputFileName, std::ios::in | std::ios::out | std::ios::binary);
-	}
-	catch (const std::ifstream::failure& e) {
-		die(inputFileName + " " + e.what());
-	}
-	catch (...){
-		die(inputFileName + " unknown exception");
-	}
-}
-
-void open_output_file(std::ofstream& outputFileStream, const std::string& outputFileName){
-	try{
-		outputFileStream.exceptions(std::ofstream::eofbit | std::ofstream::failbit | std::ofstream::badbit);
-		outputFileStream.open(outputFileName, std::ios::binary | std::ios::out);
-	}
-	catch (const std::ofstream::failure& e) {
-		die(outputFileName + " " + e.what());
-	}
-	catch (...){
-		die(outputFileName + " unknown exception");
-	}
-}
-
-void buildIntermediateFile(const std::string& fileName, const std::string& cmdLine){
-	std::ifstream ifile;
-	ifile.open(fileName, std::ifstream::binary | std::ifstream::in);
-	//if file does not exist, then we have to build it
-	if(!ifile.is_open() || !ifile.good() || ifile.fail()){
-		std::cout << "buildIntermediate: " << cmdLine << std::endl;
-		system(cmdLine.c_str());
-	}
-	else{
-		ifile.close();
-	}
-}
-
-/*
-//Nals map is a list of maps
-//underlying maps can be either string to int maps
-//or string to another underlying map (checkout 'printbytes' keyword in output--nals-stats.txt to understand)
-//script languages such as perl may have totally different types inside a same array
-//we are emulating the same thing here, by defining this ambiguous type
-//*/
-class stringOrInt{
-	public:
-		enum disambig{
-			E_INTT,
-			E_MAPP
-		};
-		typedef std::map<const std::string, int> t_hashsMap;
-
-	private:
-		int intVal;
-		t_hashsMap mapVal;
-		disambig dd;
-
-	public:
-		stringOrInt(){
-			intVal = 0;
-			dd = E_INTT;
-		}
-		stringOrInt(int value){
-			intVal = value;
-			dd = E_INTT;
-		}
-		stringOrInt(t_hashsMap& value){
-			mapVal = value;
-			dd = E_MAPP;
-		}
-		int get_intVal(){
-			if(dd == E_INTT)
-				return intVal;
-			else{
-				die("tried to access stringOrInt value as int, whereas it is a map");
-				return 0;
-			}
-		}
-		t_hashsMap& get_mapVal(){
-			if(dd != E_MAPP)
-				die("tried to access stringOrInt value as map, whereas it is an int");
-			return mapVal;
-		}
-		disambig get_stringOrIntDisambig() const{
-			return dd;
-		}
-		void set_intVal(int value){
-			dd = E_INTT;
-			intVal = value;
-		}
-		void set_mapVal(t_hashsMap& value){
-			dd = E_MAPP;
-			mapVal = value;
-		}
-};
 
 int main(int argc, char* argv[]){
 	if(argc != 4){
@@ -158,7 +32,6 @@ int main(int argc, char* argv[]){
 					sample_stat_h264 + " > " + sample_nals),
 			sample_aac_cmdline(ffmpeg + " -i " + goodfile + \
 					" -c copy -t 1 -f adts " + sample_aac);
-	//const std::array<const std::stringstream, 4> cmdlines = {
 
 	std::cout << "Build intermediates..." << std::endl;
 	buildIntermediateFile(sample_h264, sample_h264_cmdLine);
@@ -178,10 +51,6 @@ int main(int argc, char* argv[]){
 	unsigned int headerSize = 0x100;
 	std::string header;
 	try{
-		/*
-			1 vhead.read(header, headerSize);
-			2 vhead >> header;
-			*/
 		header = std::string(headerSize, '\0');
 		vhead.seekg(0);
 		vhead.read(&header[0], headerSize);
@@ -195,20 +64,9 @@ int main(int argc, char* argv[]){
 		die("unknown exception while reading");
 	}
 
-	/*
-	std::cout << "(debug) number of characters read: " << vhead.gcount() << std::endl;
-	std::cout << "(debug) header size: " << header.size() << std::endl;
-*/
-
 	vhead.close();
 
-
-	/********************************************************************/
-	/**************************** first RegExp **************************/
-	/********************************************************************/
-
 	std::regex pattern { "\\0\\0+\x01[\x65\x45\x25].+$" };
-	//std::regex pattern { "^(.+)\x01\x65\xb8\x41.+$" };//another pattern that does the job but leaves trailing binary zeros, let's not use it
 
 	//2 methods to do perform our substitution:
 	// - using 'match' structure after a regexp_search
@@ -239,25 +97,14 @@ int main(int argc, char* argv[]){
 	//const std::string replacement = "";
 	//std::regex_replace(back_inserter(result), header.begin(), header.end(), pattern, replacement, std::regex_constants::format_sed);
 
-	//debug
-	/*
-	std::ofstream mydebugresult("mydebugresult", std::ios::out | std::ios::binary);
-	mydebugresult << result;
-	mydebugresult.close();
-	std::ofstream mydebug("mydebug", std::ios::out | std::ios::binary);
-	mydebug << header;
-	mydebug.close();
-*/
-
 	//todo: check why vhead is reopened in bin mode after its already read iops
 
 
-	//get nals
+	//get nals   ---> not used for the moment
 	std::string buf;
 	typedef std::map<const std::string, stringOrInt> t_nals_map;
 	std::array<t_nals_map, 32> nalsMaps;//32 == 0b11111 + 0b1
 	int i = 0;
-	//for(nals_map& nm: nals){
 	std::for_each(nalsMaps.begin(), nalsMaps.end(), [&i](t_nals_map& nm){
 			nm = t_nals_map({
 					{"min", stringOrInt(0xFFFFFF)}, 
@@ -266,9 +113,7 @@ int main(int argc, char* argv[]){
 					});
 			});
 
-	std::string temp, nals_buf;
-
-	//all of the following is made to prepare reading nals file
+	//the following is made to prepare reading nals file
 	//file is too big to be read with direct 'ifstream::getline' (too many syscalls I guess)
 	//getlines will have to be made on a buffered stream
 	std::filebuf* pbuf = nals.rdbuf();
@@ -363,41 +208,67 @@ if(type != 5){
 				fub += token;
 				++ii;
 			}
-
 		}
 	}
 
-	//todo (optionnal): dumper functionnality: to pretty-print nals stats file here.
 	vout << header;
 
-	int was_key = 0;
-	std::string shit = "";
+	//int was_key = 0;
+	//std::string shit = "";//(still iops)
 	int blocksize = 10000000;
 	
-//	unsigned int file_bfile = 0x100;
 	try{
 		pbuf = bfile.rdbuf();
-		//std::size_t fileContentSize = pbuf->pubseekoff (0,bfile.end,bfile.in);
-		//pbuf->pubseekpos (0,bfile.in);
-		//char* fileContentBuf=new char[fileContentSize];
-		//pbuf->sgetn (fileContentBuf,fileContentSize);
-		char* fileContentBuf=new char[blocksize];
-		std::string fileContent = "";
+		char* fileContentBuf = new char[blocksize];
+		char* concatBuffer = nullptr, *swapBuffer = nullptr;
+		int concatBufferSize = 0, swapBufferSize = 0;
 		while(1){
+			//filling B
 			std::streamsize sizeRead = pbuf->sgetn (fileContentBuf,blocksize);
-			if(sizeRead == 0)
+			if(sizeRead <= 10)
 				break;
-			std::istringstream fileContent_iss(fileContentBuf);
-			fileContent += fileContentBuf;
-			sizeRead = fileContentSize.length() - 10;
-			
-			std::time_t s_time = std::time(nullptr);
-			//std::cout << std::asctime(std::localtime(&s_time));
-		   for(int jj = 0; j < sizeRead;){
-			 	//TODO unpack stuff...
+			sizeRead -= 10;//iops
+			//let's do S = A + B:
+			swapBufferSize = concatBufferSize + sizeRead;
+			swapBuffer = (char*) realloc((char*) swapBuffer,(1 + swapBufferSize) * sizeof(char*));
+			if(concatBuffer != nullptr){
+				strncpy(swapBuffer, concatBuffer, concatBufferSize);//(S=A)
+				free(concatBuffer);
+				concatBuffer = nullptr;
+			}
+			memcpy((char*)(swapBuffer + concatBufferSize), (const char *) fileContentBuf, sizeRead);//(S+=B)
+			concatBuffer = swapBuffer;//A = S
+			swapBuffer = nullptr;//S = null
+			concatBufferSize = swapBufferSize;
+
+//debugWriteIntoFile(concatBuffer, "mydebug", concatBufferSize);
+
+			//now we have our $file in 'concatBuffer' and $fsize in 'concatBufferSize'
+		  	//(iops equivalent is '$file=$file.$buf;')
+
+			//std::time_t s_time = std::time(nullptr);
+			//std::cout << "quest-ce que le temps?" << std::asctime(std::localtime(&s_time));
+		   for(int jj = 0; jj < concatBufferSize; jj++){//todo: find out why iops the guy is iterating one by one whereas he is reading four by four
+				//let's unpack things
+
+//in construction
+unsigned long mylong = 42;
+unsigned char myshort = 'Z';
+char *qbuf = new char[4];
+memcpy((char*)qbuf, (char*)concatBuffer, 4);
+sscanf(qbuf+3, "%hhu", &myshort);//can't get myshort this way...
+sscanf(qbuf+2, "%d", &mylong);
+std::cout << "mylong=" << mylong << std::endl;
+std::cout << "myshort=" << myshort << std::endl;
+std::cout << "qbuf[0]=" << qbuf[0] << std::endl;
+std::cout << "qbuf[1]=" << qbuf[1] << std::endl;
+std::cout << "qbuf[2]=" << qbuf[2] << std::endl;
+std::cout << "qbuf[3]=" << qbuf[3] << std::endl;
+exit(23);
+
 			}
 		}
-	}
+		}
 	catch (const std::ifstream::failure& e) {
 		die(e.what());
 	}
